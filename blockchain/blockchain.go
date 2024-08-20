@@ -90,17 +90,6 @@ func (bc *Blockchain) Verify() {
 	bc.Valid = result
 }
 
-func (bc *Blockchain) Records(ws *Wallets) *Records {
-	r := &Records{[]*Record{}}
-	for _, wallet := range *ws {
-		r.Records = append(
-			r.Records,
-			&Record{wallet, bc.Balance(wallet)},
-		)
-	}
-	return r
-}
-
 func GetBlockchain() (*Blockchain, error) {
 	_, err := os.Stat("data")
 	if errors.Is(err, os.ErrNotExist) {
