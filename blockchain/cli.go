@@ -13,7 +13,6 @@ func Wallet_(args []string) {
 				"balance holder - get balance of holder wallet\n\t" +
 				"create - create a new wallet\n\t" +
 				"list - list all wallets\n\t" +
-				"update old new - update wallet holder from old to new\n\t" +
 				"delete holder - delete wallet of holder\n",
 		)
 		return
@@ -35,7 +34,7 @@ func Wallet_(args []string) {
 		}
 		wallet := ws.Wallet(holder)
 		if wallet == nil {
-			fmt.Printf("Cli.Wallet: Failed to GetWallet: %v\n", err)
+			fmt.Println("Cli.Wallet: Failed to Get Wallet: Wallet does not exist")
 			return
 		}
 		fmt.Printf("Balance of %v: %v\n", wallet.Address(), bc.Balance(wallet))
@@ -75,12 +74,12 @@ func Send(args []string) {
 	}
 	sender := ws.Wallet(from)
 	if sender == nil {
-		fmt.Printf("Cli.Send: Failed to GetWallet: %v\n", err)
+		fmt.Println("Cli.Send: Failed to Get Wallet: Wallet does not exist")
 		return
 	}
 	receiver := ws.Wallet(to)
 	if receiver == nil {
-		fmt.Printf("Cli.Send: Failed to GetWallet: %v\n", err)
+		fmt.Println("Cli.Send: Failed to Get Wallet: Wallet does not exist")
 		return
 	}
 	amount, err := strconv.Atoi(args[2])
@@ -110,7 +109,7 @@ func Mine(args []string) {
 	}
 	wallet := ws.Wallet(miner)
 	if wallet == nil {
-		fmt.Printf("Cli.Mine: Failed to GetWallet: %v\n", err)
+		fmt.Println("Cli.Mine: Failed to Get Wallet: Wallet does not exist")
 		return
 	}
 	err = bc.MineBlock(wallet)
@@ -119,6 +118,16 @@ func Mine(args []string) {
 		return
 	}
 	bc.Write()
+}
+
+func Verify() {
+	bc, err := GetBlockchain()
+	defer bc.Write()
+	if err != nil {
+		fmt.Printf("Cli.Print: Failed to GetBlockchain: %v\n", err)
+		return
+	}
+	fmt.Printf("Valid: %v\n", bc.Verify())
 }
 
 func Print() {

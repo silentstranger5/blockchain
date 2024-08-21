@@ -35,7 +35,7 @@ func NewBlockHeader(prevHash []byte) BlockHeader {
 	}
 }
 
-func (b *Block) Hash() ([]byte, error) {
+func (b *Block) Hash() (Hash, error) {
 	bbytes, err := b.Bytes()
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (b *Block) Mine(difficulty int) (*Block, error) {
 func (b *Block) Verify() (bool, error) {
 	bc := *b
 	hash := b.Header.Hash
-	bc.Header.Hash = []byte{}
+	bc.Header.Hash = nil
 	bchash, err := bc.Hash()
 	if err != nil {
 		return false, err

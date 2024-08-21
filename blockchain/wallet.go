@@ -132,14 +132,10 @@ func (w *Wallet) Bytes() []byte {
 }
 
 type MarshaledWallet struct {
-	X *big.Int
-	Y *big.Int
-	D *big.Int
-}
-
-func (w Wallet) MarshalJSON() ([]byte, error) {
-	mw := MarshaledWallet{w.X, w.Y, w.D}
-	return json.Marshal(mw)
+	Curve any
+	X     *big.Int
+	Y     *big.Int
+	D     *big.Int
 }
 
 func (w *Wallet) UnmarshalJSON(b []byte) error {

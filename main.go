@@ -13,6 +13,7 @@ func main() {
 				"wallet - manage wallets\n\t" +
 				"send - record a transfer transaction\n\t" +
 				"mine - mine transactions from pool into block\n\t" +
+				"verify - verify a blockchain integrity\n\t" +
 				"print - print blockchain data\n",
 		)
 		return
@@ -26,6 +27,8 @@ func main() {
 		blockchain.Send(args)
 	case "mine":
 		blockchain.Mine(args)
+	case "verify":
+		blockchain.Verify()
 	case "print":
 		blockchain.Print()
 	}

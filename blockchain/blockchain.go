@@ -70,13 +70,13 @@ func (bc *Blockchain) Balance(wallet *Wallet) int {
 	return balance
 }
 
-func (bc *Blockchain) Verify() {
+func (bc *Blockchain) Verify() bool {
 	result := true
 	for n, block := range bc.Blocks {
 		ok, err := block.Verify()
 		if err != nil {
 			fmt.Printf("Blockchain.Verify: %v\n", err)
-			return
+			return false
 		}
 		result = result && ok
 		if n > 0 {
@@ -91,6 +91,7 @@ func (bc *Blockchain) Verify() {
 		}
 	}
 	bc.Valid = result
+	return result
 }
 
 func GetBlockchain() (*Blockchain, error) {
