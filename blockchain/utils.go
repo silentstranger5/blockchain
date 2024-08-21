@@ -5,9 +5,9 @@ import (
 	"encoding/binary"
 )
 
-func IntToBytes(n int64) ([]byte, error) {
+func IntToBytes(n int) ([]byte, error) {
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, n)
+	err := binary.Write(buf, binary.LittleEndian, int64(n))
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 )
 
 const difficulty = 16
@@ -13,12 +14,12 @@ const reward = 10
 type Blockchain struct {
 	Blocks     []*Block
 	Pool       Txs
-	Difficulty int64
+	Difficulty int
 	Valid      bool
 }
 
-func (bc *Blockchain) PrevHash() Hash {
-	var prevHash Hash
+func (bc *Blockchain) PrevHash() []byte {
+	var prevHash []byte
 	if len(bc.Blocks) > 0 {
 		prevHash = bc.Blocks[len(bc.Blocks)-1].Header.Hash
 	}
@@ -26,16 +27,16 @@ func (bc *Blockchain) PrevHash() Hash {
 }
 
 func (bc *Blockchain) CoinBaseTx(owner *Wallet) {
-	bc.Pool = append(bc.Pool, &Tx{&Wallet{"CoinBase"}, owner, reward})
+	bc.Pool = append(bc.Pool, &Tx{"Reward", owner.Address(), reward})
 }
 
-func (bc *Blockchain) TransferTx(from, to *Wallet, amount int64) error {
+func (bc *Blockchain) TransferTx(from, to *Wallet, amount int) error {
 	if bc.Balance(from) < amount {
 		return fmt.Errorf("Blockchain.TransferTx: Failed to send %d from %s: Insufficient balance\n",
-			amount, from.Holder,
+			amount, from.Address(),
 		)
 	}
-	bc.Pool = append(bc.Pool, &Tx{from, to, amount})
+	bc.Pool = append(bc.Pool, &Tx{from.Address(), to.Address(), amount})
 	return nil
 }
 
@@ -55,13 +56,13 @@ func (bc *Blockchain) MineBlock(miner *Wallet) error {
 	return nil
 }
 
-func (bc *Blockchain) Balance(wallet *Wallet) int64 {
-	var balance int64
+func (bc *Blockchain) Balance(wallet *Wallet) int {
+	var balance int
 	for _, block := range bc.Blocks {
 		for _, tx := range block.Txs {
-			if *tx.From == *wallet {
+			if tx.From == wallet.Address() {
 				balance -= tx.Amount
-			} else if *tx.To == *wallet {
+			} else if tx.To == wallet.Address() {
 				balance += tx.Amount
 			}
 		}
@@ -80,8 +81,10 @@ func (bc *Blockchain) Verify() {
 		result = result && ok
 		if n > 0 {
 			result = result &&
-				block.Header.PrevHash ==
-					bc.Blocks[n-1].Header.Hash
+				reflect.DeepEqual(
+					block.Header.PrevHash,
+					bc.Blocks[n-1].Header.Hash,
+				)
 		}
 		if !result {
 			break

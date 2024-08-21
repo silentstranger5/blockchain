@@ -3,9 +3,12 @@ package blockchain
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 	"time"
 )
 
@@ -15,29 +18,34 @@ type Block struct {
 }
 
 type BlockHeader struct {
-	Timestamp int64
-	Nonce     int64
+	Timestamp int
+	Nonce     int
 	Hash      Hash
 	PrevHash  Hash
 }
 
-type Hash [32]byte
+type Hash []byte
 
-func NewBlockHeader(prevHash Hash) BlockHeader {
+func NewBlockHeader(prevHash []byte) BlockHeader {
 	return BlockHeader{
-		time.Now().Unix(),
+		int(time.Now().Unix()),
 		0,
-		Hash{},
+		[]byte{},
 		prevHash,
 	}
 }
 
-func (b *Block) Hash() (Hash, error) {
+func (b *Block) Hash() ([]byte, error) {
 	bbytes, err := b.Bytes()
 	if err != nil {
-		return Hash{}, err
+		return nil, err
 	}
-	return sha256.Sum256(bbytes), nil
+	h := sha256.New()
+	_, err = h.Write(bbytes)
+	if err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
 }
 
 func (b *Block) Bytes() ([]byte, error) {
@@ -64,14 +72,14 @@ func (h *BlockHeader) Bytes() ([]byte, error) {
 	return bytes.Join([][]byte{
 		tsbytes,
 		ncbytes,
-		h.Hash[:],
-		h.PrevHash[:],
+		h.Hash,
+		h.PrevHash,
 	}, []byte{}), nil
 }
 
-func (b *Block) Mine(difficulty int64) (*Block, error) {
+func (b *Block) Mine(difficulty int) (*Block, error) {
 	var err error
-	var hash Hash
+	var hash []byte
 	var hashInt big.Int
 	target := big.NewInt(1)
 	target = target.Lsh(target, uint(256-difficulty))
@@ -81,7 +89,7 @@ func (b *Block) Mine(difficulty int64) (*Block, error) {
 		if err != nil {
 			return nil, err
 		}
-		hashInt.SetBytes(hash[:])
+		hashInt.SetBytes(hash)
 		fmt.Printf("\r%x", hash)
 		if hashInt.Cmp(target) == -1 {
 			break
@@ -97,10 +105,27 @@ func (b *Block) Mine(difficulty int64) (*Block, error) {
 func (b *Block) Verify() (bool, error) {
 	bc := *b
 	hash := b.Header.Hash
-	bc.Header.Hash = Hash{}
+	bc.Header.Hash = []byte{}
 	bchash, err := bc.Hash()
 	if err != nil {
 		return false, err
 	}
-	return bchash == hash, nil
+	return reflect.DeepEqual(hash, bchash), nil
+}
+
+func (h Hash) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(h))
+}
+
+func (h *Hash) UnmarshalJSON(b []byte) error {
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	*h, err = hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	return nil
 }

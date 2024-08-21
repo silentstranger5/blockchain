@@ -5,9 +5,9 @@ import (
 )
 
 type Tx struct {
-	From   *Wallet
-	To     *Wallet
-	Amount int64
+	From   string
+	To     string
+	Amount int
 }
 
 type Txs []*Tx
@@ -30,8 +30,8 @@ func (tx *Tx) Bytes() ([]byte, error) {
 		return nil, err
 	}
 	return bytes.Join([][]byte{
-		tx.From.Bytes(),
-		tx.To.Bytes(),
+		[]byte(tx.From),
+		[]byte(tx.To),
 		txambytes,
 	}, []byte{}), nil
 }
