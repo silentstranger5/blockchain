@@ -11,7 +11,8 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/btcsuite/btcutil/base58"
+	"blockchain/base58"
+
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -34,17 +35,17 @@ func (ws *Wallets) NewWallet() *Wallet {
 }
 
 func (w *Wallet) Address() string {
-	pubKeyHash := PubKeyHash(w.PublicKey)
+	pubKeyHash := w.PubKeyHash()
 	versionedPayload := append([]byte{version}, pubKeyHash...)
 	checksum := Checksum(versionedPayload)
 	fullPayload := append(versionedPayload, checksum...)
 	address := base58.Encode(fullPayload)
-	return address
+	return string(address)
 }
 
-func PubKeyHash(pubKey ecdsa.PublicKey) []byte {
+func (w *Wallet) PubKeyHash() []byte {
 	h := sha256.New()
-	pubKeyBytes := pubKey.X.Bytes()
+	pubKeyBytes := w.X.Bytes()
 	h.Write(pubKeyBytes)
 	shabytes := h.Sum(nil)
 	r := ripemd160.New()
@@ -131,20 +132,19 @@ func (w *Wallet) Bytes() []byte {
 	}, []byte{})
 }
 
-type MarshaledWallet struct {
-	Curve any
-	X     *big.Int
-	Y     *big.Int
-	D     *big.Int
-}
-
 func (w *Wallet) UnmarshalJSON(b []byte) error {
-	mw := new(MarshaledWallet)
-	err := json.Unmarshal(b, mw)
+	type WalletAlias struct {
+		elliptic.Curve `json:"omitempty"`
+		X, Y, D        *big.Int
+	}
+	wa := new(WalletAlias)
+	err := json.Unmarshal(b, wa)
 	if err != nil {
 		return err
 	}
-	pubKey := ecdsa.PublicKey{Curve: elliptic.P256(), X: mw.X, Y: mw.Y}
-	*w = Wallet{PublicKey: pubKey, D: mw.D}
+	wa.Curve = elliptic.P256()
+	*w = Wallet{PublicKey: ecdsa.PublicKey{
+		Curve: wa.Curve, X: wa.X, Y: wa.Y,
+	}, D: wa.D}
 	return nil
 }

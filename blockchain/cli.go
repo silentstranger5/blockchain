@@ -37,7 +37,12 @@ func Wallet_(args []string) {
 			fmt.Println("Cli.Wallet: Failed to Get Wallet: Wallet does not exist")
 			return
 		}
-		fmt.Printf("Balance of %v: %v\n", wallet.Address(), bc.Balance(wallet))
+		utxo := bc.FindUTXO(wallet)
+		balance := 0
+		for _, out := range utxo {
+			balance += out.Value
+		}
+		fmt.Printf("Balance of %v: %v\n", wallet.Address(), balance)
 	case "create":
 		wallet := ws.NewWallet()
 		fmt.Println(wallet.Address())
@@ -87,7 +92,11 @@ func Send(args []string) {
 		fmt.Printf("Cli.Send: Failed to Record TransferTx: Invalid Amount Value\n")
 		return
 	}
-	bc.TransferTx(sender, receiver, amount)
+	err = bc.TransferTx(sender, receiver, amount)
+	if err != nil {
+		fmt.Printf("Cli.Send: Failed to Record TransferTx: %v\n", err)
+		return
+	}
 	bc.Write()
 }
 

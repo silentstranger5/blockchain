@@ -2,6 +2,8 @@ package blockchain
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -17,78 +19,26 @@ type Block struct {
 	Txs    Txs
 }
 
-type BlockHeader struct {
-	Timestamp int
-	Nonce     int
-	Hash      Hash
-	PrevHash  Hash
+func (b *Block) Bytes() []byte {
+	return append(
+		b.Header.Bytes(),
+		b.Txs.Bytes()...,
+	)
 }
 
-type Hash []byte
-
-func NewBlockHeader(prevHash []byte) BlockHeader {
-	return BlockHeader{
-		int(time.Now().Unix()),
-		0,
-		[]byte{},
-		prevHash,
-	}
+func (b *Block) Hash() []byte {
+	hash := sha256.Sum256(b.Bytes())
+	return hash[:]
 }
 
-func (b *Block) Hash() (Hash, error) {
-	bbytes, err := b.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	h := sha256.New()
-	_, err = h.Write(bbytes)
-	if err != nil {
-		return nil, err
-	}
-	return h.Sum(nil), nil
-}
-
-func (b *Block) Bytes() ([]byte, error) {
-	bhbytes, err := b.Header.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	txbytes, err := b.Txs.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	return append(bhbytes, txbytes...), nil
-}
-
-func (h *BlockHeader) Bytes() ([]byte, error) {
-	tsbytes, err := IntToBytes(h.Timestamp)
-	if err != nil {
-		return nil, err
-	}
-	ncbytes, err := IntToBytes(h.Nonce)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.Join([][]byte{
-		tsbytes,
-		ncbytes,
-		h.Hash,
-		h.PrevHash,
-	}, []byte{}), nil
-}
-
-func (b *Block) Mine(difficulty int) (*Block, error) {
-	var err error
+func (b *Block) Mine(difficulty int) *Block {
 	var hash []byte
 	var hashInt big.Int
 	target := big.NewInt(1)
 	target = target.Lsh(target, uint(256-difficulty))
 	fmt.Println("Mining a New Block")
 	for b.Header.Nonce < math.MaxInt {
-		hash, err = b.Hash()
-		if err != nil {
-			return nil, err
-		}
+		hash = b.Hash()
 		hashInt.SetBytes(hash)
 		fmt.Printf("\r%x", hash)
 		if hashInt.Cmp(target) == -1 {
@@ -99,31 +49,70 @@ func (b *Block) Mine(difficulty int) (*Block, error) {
 	}
 	b.Header.Hash = hash
 	fmt.Println()
-	return b, nil
+	return b
 }
 
-func (b *Block) Verify() (bool, error) {
+func (b *Block) Verify() bool {
+	result := true
 	bc := *b
-	hash := b.Header.Hash
 	bc.Header.Hash = nil
-	bchash, err := bc.Hash()
-	if err != nil {
-		return false, err
+	result = result && reflect.DeepEqual(
+		[]byte(b.Header.Hash),
+		bc.Hash(),
+	)
+	for _, tx := range b.Txs {
+		for _, in := range tx.TxIn {
+			pubKey := &ecdsa.PublicKey{
+				Curve: elliptic.P256(),
+				X:     big.NewInt(0).SetBytes(in.PubKey[:32]),
+				Y:     big.NewInt(0).SetBytes(in.PubKey[32:]),
+			}
+			result = result && ecdsa.VerifyASN1(
+				pubKey, tx.Strip().Hash(), in.Signature,
+			)
+		}
 	}
-	return reflect.DeepEqual(hash, bchash), nil
+	return result
 }
 
-func (h Hash) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hex.EncodeToString(h))
+type BlockHeader struct {
+	Timestamp int
+	Nonce     int
+	Hash      Bytes
+	PrevHash  Bytes
 }
 
-func (h *Hash) UnmarshalJSON(b []byte) error {
+func NewBlockHeader(prevHash []byte) BlockHeader {
+	return BlockHeader{
+		int(time.Now().Unix()),
+		0,
+		nil,
+		prevHash,
+	}
+}
+
+func (h *BlockHeader) Bytes() []byte {
+	return bytes.Join([][]byte{
+		IntToBytes(h.Timestamp),
+		IntToBytes(h.Nonce),
+		h.Hash,
+		h.PrevHash,
+	}, nil)
+}
+
+type Bytes []byte
+
+func (b Bytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(b))
+}
+
+func (b *Bytes) UnmarshalJSON(data []byte) error {
 	var s string
-	err := json.Unmarshal(b, &s)
+	err := json.Unmarshal(data, &s)
 	if err != nil {
 		return err
 	}
-	*h, err = hex.DecodeString(s)
+	*b, err = hex.DecodeString(s)
 	if err != nil {
 		return err
 	}
