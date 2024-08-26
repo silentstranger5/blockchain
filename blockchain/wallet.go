@@ -29,7 +29,7 @@ func (w *Wallet) Bytes() []byte {
 		w.X.Bytes(),
 		w.Y.Bytes(),
 		w.D.Bytes(),
-	}, []byte{})
+	}, nil)
 }
 
 func (w *Wallet) Address() string {
