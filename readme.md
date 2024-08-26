@@ -1,7 +1,5 @@
 # Simple Blockchain Implementation in Golang
 
-This is a simple Blockchain Implementation in Golang. 
-
 ## Introduction
 
 *Hashing algorithm* - produces a unique representation of data. If data is changed, output of the hashing 
