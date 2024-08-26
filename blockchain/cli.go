@@ -12,8 +12,8 @@ func Wallet_(args []string) {
 			"Usage:  blockchain wallet command args...\n\t" +
 				"balance holder - get balance of holder wallet\n\t" +
 				"create - create a new wallet\n\t" +
-				"list - list all wallets\n\t" +
-				"delete holder - delete wallet of holder\n",
+				"delete holder - delete wallet of holder\n\t" +
+				"list - list all wallets\n",
 		)
 		return
 	}
@@ -37,7 +37,16 @@ func Wallet_(args []string) {
 			fmt.Println("Cli.Wallet: Failed to Get Wallet: Wallet does not exist")
 			return
 		}
-		utxo := bc.FindUTXO(wallet)
+		u, err := GetUTXOSet()
+		if err != nil {
+			fmt.Println("Cli.Wallet: Failed to GetUTXOSet: %v\n", err)
+			return
+		}
+		if len(*u) == 0 {
+			u.Index(bc)
+			u.Write()
+		}
+		utxo := u.UnspentTxOuts(wallet)
 		balance := 0
 		for _, out := range utxo {
 			balance += out.Value
@@ -92,12 +101,17 @@ func Send(args []string) {
 		fmt.Printf("Cli.Send: Failed to Record TransferTx: Invalid Amount Value\n")
 		return
 	}
-	err = bc.TransferTx(sender, receiver, amount)
+	u, err := GetUTXOSet()
 	if err != nil {
-		fmt.Printf("Cli.Send: Failed to Record TransferTx: %v\n", err)
+		fmt.Println("Cli.Send: Failed to GetUTXOSet: %v\n", err)
 		return
 	}
+	if len(*u) == 0 {
+		u.Index(bc)
+	}
+	bc.Send(sender, receiver, amount, u)
 	bc.Write()
+	u.Write()
 }
 
 func Mine(args []string) {
@@ -121,12 +135,17 @@ func Mine(args []string) {
 		fmt.Println("Cli.Mine: Failed to Get Wallet: Wallet does not exist")
 		return
 	}
-	err = bc.MineBlock(wallet)
+	u, err := GetUTXOSet()
 	if err != nil {
-		fmt.Printf("Cli.Mine: Failed to MineBlock: %v\n", err)
+		fmt.Println("Cli.Mine: Failed to GetUTXOSet: %v\n", err)
 		return
 	}
+	if len(*u) == 0 {
+		u.Index(bc)
+	}
+	bc.Mine(wallet, u)
 	bc.Write()
+	u.Write()
 }
 
 func Verify() {

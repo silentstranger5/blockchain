@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"blockchain/base58"
-
 	"golang.org/x/crypto/ripemd160"
 )
 

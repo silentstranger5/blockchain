@@ -21,6 +21,9 @@ can be spent. *Inputs* point to other outputs, and indicate a source of value in
 in a transaction must be spent. If there is any difference between input value and value intended for transfer, 
 the difference is sent back to the original wallet. This difference is called *change*.
 
+*UTXO Set* - a set of unspent transaction outputs. Contains all available assets for spending. 
+Optimization technique which allows to increase efficiency of search for unspent outputs.
+
 ## Description
 
 Data is stored as JSON for two reasons:
@@ -41,6 +44,7 @@ Wallets are implemented as ECDSA private key defined by a set of parameters on e
 | cli.go | Command-Line Interface entry point of application with argument parsing |
 | transaction.go | Transaction is a record of asset transfer between wallets. An atomic record of block. |
 | utils.go  | Integer to Bytes converter utility function |
+| utxoset.go| UTXO Set is optimization technique which allows to access a set of unspent transaction outputs |
 | wallet.go | Wallet denotes an asset holder in system |
 
 ## How to build

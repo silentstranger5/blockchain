@@ -68,7 +68,7 @@ func (b *Block) Verify() bool {
 				Y:     big.NewInt(0).SetBytes(in.PubKey[32:]),
 			}
 			result = result && ecdsa.VerifyASN1(
-				pubKey, tx.Strip().Hash(), in.Signature,
+				pubKey, tx.Trim().Hash(), in.Signature,
 			)
 		}
 	}
