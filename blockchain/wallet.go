@@ -20,17 +20,16 @@ const cslen = 4
 
 type Wallet ecdsa.PrivateKey
 
-type Wallets map[string]*Wallet
-
-func (ws *Wallets) NewWallet() *Wallet {
-	curve := elliptic.P256()
-	key, err := ecdsa.GenerateKey(curve, rand.Reader)
-	if err != nil {
-		panic(err)
+func (w *Wallet) Bytes() []byte {
+	if w == nil {
+		return nil
 	}
-	wallet := (*Wallet)(key)
-	(*ws)[wallet.Address()] = wallet
-	return wallet
+
+	return bytes.Join([][]byte{
+		w.X.Bytes(),
+		w.Y.Bytes(),
+		w.D.Bytes(),
+	}, []byte{})
 }
 
 func (w *Wallet) Address() string {
@@ -61,6 +60,44 @@ func Checksum(payload []byte) []byte {
 	h.Write(first)
 	second := h.Sum(nil)
 	return second[:cslen]
+}
+
+func (w *Wallet) UnmarshalJSON(b []byte) error {
+	type WalletAlias struct {
+		elliptic.Curve `json:"omitempty"`
+		X, Y, D        *big.Int
+	}
+	wa := new(WalletAlias)
+	err := json.Unmarshal(b, wa)
+	if err != nil {
+		return err
+	}
+	wa.Curve = elliptic.P256()
+	*w = Wallet{PublicKey: ecdsa.PublicKey{
+		Curve: wa.Curve, X: wa.X, Y: wa.Y,
+	}, D: wa.D}
+	return nil
+}
+
+type Wallets map[string]*Wallet
+
+func (ws *Wallets) NewWallet() *Wallet {
+	curve := elliptic.P256()
+	key, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	wallet := (*Wallet)(key)
+	(*ws)[wallet.Address()] = wallet
+	return wallet
+}
+
+func (ws *Wallets) Wallet(address string) *Wallet {
+	return (*ws)[address]
+}
+
+func (ws *Wallets) Delete(address string) {
+	delete(*ws, address)
 }
 
 func GetWallets() (*Wallets, error) {
@@ -108,42 +145,5 @@ func (ws *Wallets) Write() error {
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (ws *Wallets) Wallet(address string) *Wallet {
-	return (*ws)[address]
-}
-
-func (ws *Wallets) Delete(address string) {
-	delete(*ws, address)
-}
-
-func (w *Wallet) Bytes() []byte {
-	if w == nil {
-		return []byte{}
-	}
-
-	return bytes.Join([][]byte{
-		w.X.Bytes(),
-		w.Y.Bytes(),
-		w.D.Bytes(),
-	}, []byte{})
-}
-
-func (w *Wallet) UnmarshalJSON(b []byte) error {
-	type WalletAlias struct {
-		elliptic.Curve `json:"omitempty"`
-		X, Y, D        *big.Int
-	}
-	wa := new(WalletAlias)
-	err := json.Unmarshal(b, wa)
-	if err != nil {
-		return err
-	}
-	wa.Curve = elliptic.P256()
-	*w = Wallet{PublicKey: ecdsa.PublicKey{
-		Curve: wa.Curve, X: wa.X, Y: wa.Y,
-	}, D: wa.D}
 	return nil
 }
