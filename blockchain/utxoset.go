@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -88,6 +90,27 @@ func (u *UTXOSet) TransferTxIn(from *Wallet, amount int) ([]*TxIn, int) {
 		}
 	}
 	return inputs, total
+}
+
+func (u *UTXOSet) Serialize() []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(u)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func UTXOSetDeserialize(data []byte) *UTXOSet {
+	u := &UTXOSet{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(u)
+	if err != nil {
+		panic(err)
+	}
+	return u
 }
 
 func GetUTXOSet() (*UTXOSet, error) {

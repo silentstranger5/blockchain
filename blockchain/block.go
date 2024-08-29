@@ -5,8 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"math"
 	"math/big"
@@ -75,11 +74,32 @@ func (b *Block) Verify() bool {
 	return result
 }
 
+func (b *Block) Serialize() []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(b)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func BlockDeserialize(data []byte) *Block {
+	b := &Block{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(b)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
 type BlockHeader struct {
 	Timestamp int
 	Nonce     int
-	Hash      Bytes
-	PrevHash  Bytes
+	Hash      []byte
+	PrevHash  []byte
 }
 
 func NewBlockHeader(prevHash []byte) BlockHeader {
@@ -98,23 +118,4 @@ func (h *BlockHeader) Bytes() []byte {
 		h.Hash,
 		h.PrevHash,
 	}, nil)
-}
-
-type Bytes []byte
-
-func (b Bytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hex.EncodeToString(b))
-}
-
-func (b *Bytes) UnmarshalJSON(data []byte) error {
-	var s string
-	err := json.Unmarshal(data, &s)
-	if err != nil {
-		return err
-	}
-	*b, err = hex.DecodeString(s)
-	if err != nil {
-		return err
-	}
-	return nil
 }

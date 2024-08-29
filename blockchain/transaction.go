@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/gob"
 	"fmt"
 	"reflect"
 )
@@ -70,11 +71,32 @@ func (tx *Tx) SignedWith(w *Wallet) bool {
 	return ok
 }
 
+func (tx *Tx) Serialize() []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(tx)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func TxDeserialize(data []byte) *Tx {
+	tx := &Tx{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(tx)
+	if err != nil {
+		panic(err)
+	}
+	return tx
+}
+
 type TxIn struct {
-	TxOutHash  Bytes
+	TxOutHash  []byte
 	TxOutIndex int
-	Signature  Bytes
-	PubKey     Bytes
+	Signature  []byte
+	PubKey     []byte
 }
 
 func (in *TxIn) Bytes() []byte {
@@ -88,7 +110,7 @@ func (in *TxIn) Bytes() []byte {
 
 type TxOut struct {
 	Value      int
-	PubKeyHash Bytes
+	PubKeyHash []byte
 }
 
 func (out *TxOut) Bytes() []byte {
@@ -107,6 +129,32 @@ func (txs Txs) Bytes() []byte {
 		data = append(data, tx.Bytes())
 	}
 	return bytes.Join(data, nil)
+}
+
+func (txs Txs) Hash() []byte {
+	hash := sha256.Sum256(txs.Bytes())
+	return hash[:]
+}
+
+func (txs Txs) Serialize() []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(txs)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func TxsDeserialize(data []byte) *Txs {
+	txs := &Txs{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(txs)
+	if err != nil {
+		panic(err)
+	}
+	return txs
 }
 
 func (txs *Txs) UnspentTxOuts(spent map[string][]int) map[string][]*TxOut {

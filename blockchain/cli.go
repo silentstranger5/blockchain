@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 )
@@ -18,33 +17,22 @@ func Wallet_(args []string) {
 		return
 	}
 	method := args[0]
-	ws, err := GetWallets()
-	if err != nil {
-		fmt.Printf("Cli.Wallet: Failed to Get Wallets: %v\n", err)
-		return
-	}
-	defer ws.Write()
+	db := GetDatabase()
+	defer db.Close()
+	ws := db.Wallets()
 	switch method {
 	case "balance":
 		holder := args[1]
-		bc, err := GetBlockchain()
-		if err != nil {
-			fmt.Printf("Cli.Wallet: Failed to GetBlockchain: %v\n", err)
-			return
-		}
+		bc := GetBlockchain(db)
 		wallet := ws.Wallet(holder)
 		if wallet == nil {
 			fmt.Println("Cli.Wallet: Failed to Get Wallet: Wallet does not exist")
 			return
 		}
-		u, err := GetUTXOSet()
-		if err != nil {
-			fmt.Println("Cli.Wallet: Failed to GetUTXOSet: %v\n", err)
-			return
-		}
+		u := db.UTXOSet()
 		if len(*u) == 0 {
 			u.Index(bc)
-			u.Write()
+			db.SetUTXOSet(u)
 		}
 		utxo := u.UnspentTxOuts(wallet)
 		balance := 0
@@ -54,6 +42,7 @@ func Wallet_(args []string) {
 		fmt.Printf("Balance of %v: %v\n", wallet.Address(), balance)
 	case "create":
 		wallet := ws.NewWallet()
+		db.SetWallets(ws)
 		fmt.Println(wallet.Address())
 	case "list":
 		wallets := make([]string, 0)
@@ -64,6 +53,7 @@ func Wallet_(args []string) {
 	case "delete":
 		holder := args[1]
 		ws.Delete(holder)
+		db.SetWallets(ws)
 	}
 }
 
@@ -76,16 +66,9 @@ func Send(args []string) {
 		return
 	}
 	from, to := args[0], args[1]
-	ws, err := GetWallets()
-	if err != nil {
-		fmt.Printf("Cli.Send: Failed to GetWallets: %v\n", err)
-		return
-	}
-	bc, err := GetBlockchain()
-	if err != nil {
-		fmt.Printf("Cli.Send: Failed to GetBlockchain: %v\n", err)
-		return
-	}
+	db := GetDatabase()
+	defer db.Close()
+	ws := db.Wallets()
 	sender := ws.Wallet(from)
 	if sender == nil {
 		fmt.Println("Cli.Send: Failed to Get Wallet: Wallet does not exist")
@@ -101,17 +84,13 @@ func Send(args []string) {
 		fmt.Printf("Cli.Send: Failed to Record TransferTx: Invalid Amount Value\n")
 		return
 	}
-	u, err := GetUTXOSet()
-	if err != nil {
-		fmt.Println("Cli.Send: Failed to GetUTXOSet: %v\n", err)
-		return
-	}
+	bc := GetBlockchain(db)
+	u := db.UTXOSet()
 	if len(*u) == 0 {
 		u.Index(bc)
+		db.SetUTXOSet(u)
 	}
 	bc.Send(sender, receiver, amount, u)
-	bc.Write()
-	u.Write()
 }
 
 func Mine(args []string) {
@@ -120,54 +99,56 @@ func Mine(args []string) {
 		return
 	}
 	miner := args[0]
-	ws, err := GetWallets()
-	if err != nil {
-		fmt.Printf("Cli.Mine: Failed to GetWallets: %v\n", err)
-		return
-	}
-	bc, err := GetBlockchain()
-	if err != nil {
-		fmt.Printf("Cli.Mine: Failed to GetBlockchain: %v\n", err)
-		return
-	}
+	db := GetDatabase()
+	defer db.Close()
+	ws := db.Wallets()
+	bc := GetBlockchain(db)
 	wallet := ws.Wallet(miner)
 	if wallet == nil {
 		fmt.Println("Cli.Mine: Failed to Get Wallet: Wallet does not exist")
 		return
 	}
-	u, err := GetUTXOSet()
-	if err != nil {
-		fmt.Println("Cli.Mine: Failed to GetUTXOSet: %v\n", err)
-		return
-	}
+	u := db.UTXOSet()
 	if len(*u) == 0 {
 		u.Index(bc)
+		db.SetUTXOSet(u)
 	}
 	bc.Mine(wallet, u)
-	bc.Write()
-	u.Write()
 }
 
 func Verify() {
-	bc, err := GetBlockchain()
-	defer bc.Write()
-	if err != nil {
-		fmt.Printf("Cli.Print: Failed to GetBlockchain: %v\n", err)
-		return
-	}
+	db := GetDatabase()
+	defer db.Close()
+	bc := GetBlockchain(db)
 	fmt.Printf("Valid: %v\n", bc.Verify())
 }
 
 func Print() {
-	bc, err := GetBlockchain()
-	if err != nil {
-		fmt.Printf("Cli.Print: Failed to GetBlockchain: %v\n", err)
+	db := GetDatabase()
+	defer db.Close()
+	bc := GetBlockchain(db)
+	bc.Print()
+}
+
+func Serialize(args []string) {
+	if len(args) < 1 {
+		fmt.Printf(
+			"Usage: blockchain serialize type\n\t" +
+				"blockchain - serialize blockchain\n\t" +
+				"wallets - serialize wallets\n",
+		)
 		return
 	}
-	data, err := json.MarshalIndent(bc, "", "  ")
-	if err != nil {
-		fmt.Printf("Cli.Print: Failed to MarshalIndent: %v\n", err)
-		return
+	db := GetDatabase()
+	defer db.Close()
+	switch args[0] {
+	case "blockchain":
+		bc := GetBlockchain(db)
+		b := bc.Serialize()
+		fmt.Printf("Serialized Blockchain: %x\n", b)
+	case "wallets":
+		ws := db.Wallets()
+		b := ws.Serialize()
+		fmt.Printf("Serialized Wallets: %x\n", b)
 	}
-	fmt.Print(string(data))
 }

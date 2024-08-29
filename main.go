@@ -14,7 +14,8 @@ func main() {
 				"mine - mine transactions from pool into block\n\t" +
 				"print - print blockchain data\n\t" +
 				"send - record a transfer transaction\n\t" +
-				"verify - verify a blockchain integrity\n",
+				"verify - verify a blockchain integrity\n\t" +
+				"serialize - serialize a data type\n",
 		)
 		return
 	}
@@ -31,5 +32,7 @@ func main() {
 		blockchain.Verify()
 	case "print":
 		blockchain.Print()
+	case "serialize":
+		blockchain.Serialize(args)
 	}
 }

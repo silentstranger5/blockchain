@@ -1,8 +1,11 @@
 package blockchain
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 )
@@ -11,16 +14,32 @@ const difficulty = 16
 const reward = 10
 
 type Blockchain struct {
-	Blocks     []*Block
+	Block      *Block `json:"-"`
 	Pool       Txs
 	Difficulty int
 	Valid      bool
+	DB         *Database `json:"-"`
 }
 
-func (bc *Blockchain) Send(from, to *Wallet, amount int, u *UTXOSet) {
+func GetBlockchain(db *Database) *Blockchain {
+	bc := &Blockchain{}
+	db.Blockchain()
+	bc.Block = db.NextBlock()
+	pool := db.Pool()
+	if pool != nil {
+		bc.Pool = *pool
+	}
+	bc.Difficulty = difficulty
+	bc.DB = db
+	return bc
+}
+
+func (bc Blockchain) Send(from, to *Wallet, amount int, u *UTXOSet) {
 	tx := TransferTx(from, to, amount, u)
 	bc.Pool = append(Txs{tx}, bc.Pool...)
 	u.Update(tx)
+	bc.DB.SetPool(&bc.Pool)
+	bc.DB.SetUTXOSet(u)
 }
 
 func (bc *Blockchain) Mine(miner *Wallet, u *UTXOSet) {
@@ -33,34 +52,42 @@ func (bc *Blockchain) Mine(miner *Wallet, u *UTXOSet) {
 	bc.Pool = nil
 	block := &Block{header, txs}
 	block = block.Mine(bc.Difficulty)
-	bc.Blocks = append([]*Block{block}, bc.Blocks...)
+	bc.DB.AddBlock(block)
+	bc.DB.SetPool(&bc.Pool)
+	bc.DB.SetUTXOSet(u)
 }
 
 func (bc *Blockchain) TxByHash(txHash []byte) *Tx {
-	for _, block := range bc.Blocks {
+	bc.DB.Blockchain()
+	block := bc.DB.NextBlock()
+	for block != nil {
 		for _, tx := range block.Txs {
 			if reflect.DeepEqual(tx.Hash(), txHash) {
 				return tx
 			}
 		}
+		block = bc.DB.NextBlock()
 	}
 	return nil
 }
 
 func (bc *Blockchain) Verify() bool {
 	result := true
-	for n, block := range bc.Blocks {
+	bc.DB.Blockchain()
+	block := bc.DB.NextBlock()
+	for block != nil {
 		result = result && block.Verify()
-		if n < len(bc.Blocks)-1 {
+		if next := bc.DB.PeekBlock(); next != nil {
 			result = result &&
 				reflect.DeepEqual(
 					block.Header.PrevHash,
-					bc.Blocks[n+1].Header.Hash,
+					next.Header.Hash,
 				)
 		}
 		if !result {
 			break
 		}
+		block = bc.DB.NextBlock()
 	}
 	bc.Valid = result
 	return result
@@ -68,8 +95,10 @@ func (bc *Blockchain) Verify() bool {
 
 func (bc *Blockchain) LastHash() []byte {
 	var lastHash []byte
-	if len(bc.Blocks) > 0 {
-		lastHash = bc.Blocks[0].Header.Hash
+	bc.DB.Blockchain()
+	block := bc.DB.NextBlock()
+	if block != nil {
+		lastHash = block.Header.Hash
 	}
 	return lastHash
 }
@@ -77,16 +106,59 @@ func (bc *Blockchain) LastHash() []byte {
 func (bc *Blockchain) UnspentTxOuts() map[string][]*TxOut {
 	spent := make(map[string][]int)
 	unspent := bc.Pool.UnspentTxOuts(spent)
-	for _, block := range bc.Blocks {
+	bc.DB.Blockchain()
+	block := bc.DB.NextBlock()
+	for block != nil {
 		unspentBlock := block.Txs.UnspentTxOuts(spent)
 		for k, v := range unspentBlock {
 			unspent[k] = v
 		}
+		block = bc.DB.NextBlock()
 	}
 	return unspent
 }
 
-func GetBlockchain() (*Blockchain, error) {
+func (bc *Blockchain) Print() {
+	bc.DB.Blockchain()
+	block := bc.DB.NextBlock()
+	for block != nil {
+		data, err := json.MarshalIndent(block, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("\"Block\": " + string(data))
+		block = bc.DB.NextBlock()
+	}
+	bc.Verify()
+	data, err := json.MarshalIndent(bc, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("\"Metadata\": " + string(data))
+}
+
+func (bc *Blockchain) Serialize() []byte {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(bc)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func BlockchainDeserialize(data []byte) *Blockchain {
+	bc := &Blockchain{}
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(bc)
+	if err != nil {
+		panic(err)
+	}
+	return bc
+}
+
+func GetBlockchain_() (*Blockchain, error) {
 	_, err := os.Stat("data")
 	if errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir("data", 0750)

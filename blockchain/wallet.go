@@ -6,12 +6,15 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"math/big"
 	"os"
 
 	"blockchain/base58"
+
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -62,6 +65,23 @@ func Checksum(payload []byte) []byte {
 	return second[:cslen]
 }
 
+func (w *Wallet) Serialize() []byte {
+	pk := (*ecdsa.PrivateKey)(w)
+	b, err := x509.MarshalECPrivateKey(pk)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
+func WalletDeserialize(data []byte) *Wallet {
+	pk, err := x509.ParseECPrivateKey(data)
+	if err != nil {
+		panic(err)
+	}
+	return (*Wallet)(pk)
+}
+
 func (w *Wallet) UnmarshalJSON(b []byte) error {
 	type WalletAlias struct {
 		elliptic.Curve `json:"omitempty"`
@@ -98,6 +118,40 @@ func (ws *Wallets) Wallet(address string) *Wallet {
 
 func (ws *Wallets) Delete(address string) {
 	delete(*ws, address)
+}
+
+// Sounds funny if you try to spell it
+// but it actually stands for
+// wallets serialized type
+type wsst map[string][]byte
+
+func (ws *Wallets) Serialize() []byte {
+	wss := make(wsst)
+	for k, v := range *ws {
+		wss[k] = v.Serialize()
+	}
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(wss)
+	if err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func WalletsDeserialize(data []byte) *Wallets {
+	ws := &Wallets{}
+	wss := make(wsst)
+	buf := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&wss)
+	if err != nil {
+		panic(err)
+	}
+	for k, v := range wss {
+		(*ws)[k] = WalletDeserialize(v)
+	}
+	return ws
 }
 
 func GetWallets() (*Wallets, error) {
