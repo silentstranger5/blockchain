@@ -24,10 +24,9 @@ Optimization technique which allows to increase efficiency of search for unspent
 
 ## Description
 
-Data is stored as JSON for two reasons:
-
-1. It is simple to work with
-2. It is human readable, which allows to reuse code to print and debugging
+Blockchain is implemented as a block iterator. All data are stored in a key-value database called 
+[bolt](https://github.com/etcd-io/bbolt). Serialization uses [gob](https://pkg.go.dev/encoding/gob) package, 
+and thus is incompatible with any environment other than Go.
 
 Blocks are prepended onto blockchain in order to keep track of spent transaction outputs more easily.
 Blockchain implements a transaction pool, which allows to follow the original model more accurately.
