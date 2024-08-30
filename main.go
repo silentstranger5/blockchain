@@ -14,8 +14,7 @@ func main() {
 				"mine - mine transactions from pool into block\n\t" +
 				"print - print blockchain data\n\t" +
 				"send - record a transfer transaction\n\t" +
-				"verify - verify a blockchain integrity\n\t" +
-				"serialize - serialize a data type\n",
+				"verify - verify a blockchain integrity\n",
 		)
 		return
 	}
@@ -24,15 +23,13 @@ func main() {
 	switch method {
 	case "wallet":
 		blockchain.Wallet_(args)
-	case "send":
-		blockchain.Send(args)
 	case "mine":
 		blockchain.Mine(args)
-	case "verify":
-		blockchain.Verify()
 	case "print":
 		blockchain.Print()
-	case "serialize":
-		blockchain.Serialize(args)
+	case "send":
+		blockchain.Send(args)
+	case "verify":
+		blockchain.Verify()
 	}
 }

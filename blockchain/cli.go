@@ -133,26 +133,3 @@ func Print() {
 	bc := GetBlockchain(db)
 	bc.Print()
 }
-
-func Serialize(args []string) {
-	if len(args) < 1 {
-		fmt.Printf(
-			"Usage: blockchain serialize type\n\t" +
-				"blockchain - serialize blockchain\n\t" +
-				"wallets - serialize wallets\n",
-		)
-		return
-	}
-	db := GetDatabase()
-	defer db.Close()
-	switch args[0] {
-	case "blockchain":
-		bc := GetBlockchain(db)
-		b := bc.Serialize()
-		fmt.Printf("Serialized Blockchain: %x\n", b)
-	case "wallets":
-		ws := db.Wallets()
-		b := ws.Serialize()
-		fmt.Printf("Serialized Wallets: %x\n", b)
-	}
-}
