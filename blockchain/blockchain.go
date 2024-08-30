@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 	"reflect"
 )
 
-const difficulty = 16
-const reward = 10
+const (
+	difficulty = 16
+	reward     = 10
+)
 
 type Blockchain struct {
 	DB         *Database `json:"-"`
@@ -154,50 +154,4 @@ func BlockchainDeserialize(data []byte) *Blockchain {
 		panic(err)
 	}
 	return bc
-}
-
-func GetBlockchain_() (*Blockchain, error) {
-	_, err := os.Stat("data")
-	if errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir("data", 0750)
-		if err != nil {
-			return nil, err
-		}
-	}
-	_, err = os.Stat("data/blockchain.json")
-	if errors.Is(err, os.ErrNotExist) {
-		bc := &Blockchain{}
-		bc.Difficulty = difficulty
-		data, err := json.Marshal(bc)
-		if err != nil {
-			return nil, err
-		}
-		err = os.WriteFile("data/blockchain.json", data, 0666)
-		if err != nil {
-			return nil, err
-		}
-		return bc, nil
-	}
-	data, err := os.ReadFile("data/blockchain.json")
-	if err != nil {
-		return nil, err
-	}
-	bc := &Blockchain{}
-	err = json.Unmarshal(data, bc)
-	if err != nil {
-		return nil, err
-	}
-	return bc, nil
-}
-
-func (bc *Blockchain) Write() error {
-	data, err := json.Marshal(bc)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile("data/blockchain.json", data, 0666)
-	if err != nil {
-		return err
-	}
-	return nil
 }

@@ -34,7 +34,9 @@ func Wallet_(args []string) {
 			return
 		}
 		u := db.UTXOSet()
-		if len(*u) == 0 {
+		if u == nil {
+			u = new(UTXOSet)
+			*u = make(UTXOSet)
 			u.Index(bc)
 			db.SetUTXOSet(u)
 		}
@@ -73,6 +75,10 @@ func Send(args []string) {
 	db := GetDatabase()
 	defer db.Close()
 	ws := db.Wallets()
+	if ws == nil {
+		ws = new(Wallets)
+		*ws = make(Wallets)
+	}
 	sender := ws.Wallet(from)
 	if sender == nil {
 		fmt.Println("Cli.Send: Failed to Get Wallet: Wallet does not exist")
@@ -90,7 +96,9 @@ func Send(args []string) {
 	}
 	bc := GetBlockchain(db)
 	u := db.UTXOSet()
-	if len(*u) == 0 {
+	if u == nil {
+		u = new(UTXOSet)
+		*u = make(UTXOSet)
 		u.Index(bc)
 		db.SetUTXOSet(u)
 	}
@@ -106,6 +114,10 @@ func Mine(args []string) {
 	db := GetDatabase()
 	defer db.Close()
 	ws := db.Wallets()
+	if ws == nil {
+		ws = new(Wallets)
+		*ws = make(Wallets)
+	}
 	bc := GetBlockchain(db)
 	wallet := ws.Wallet(miner)
 	if wallet == nil {
@@ -113,7 +125,9 @@ func Mine(args []string) {
 		return
 	}
 	u := db.UTXOSet()
-	if len(*u) == 0 {
+	if u == nil {
+		u = new(UTXOSet)
+		*u = make(UTXOSet)
 		u.Index(bc)
 		db.SetUTXOSet(u)
 	}

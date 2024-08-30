@@ -8,18 +8,16 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/gob"
-	"encoding/json"
-	"errors"
-	"math/big"
-	"os"
 
 	"blockchain/base58"
 
 	"golang.org/x/crypto/ripemd160"
 )
 
-const version = 00
-const cslen = 4
+const (
+	version = 00
+	cslen   = 4
+)
 
 type Wallet ecdsa.PrivateKey
 
@@ -82,23 +80,6 @@ func WalletDeserialize(data []byte) *Wallet {
 	return (*Wallet)(pk)
 }
 
-func (w *Wallet) UnmarshalJSON(b []byte) error {
-	type WalletAlias struct {
-		elliptic.Curve `json:"omitempty"`
-		X, Y, D        *big.Int
-	}
-	wa := new(WalletAlias)
-	err := json.Unmarshal(b, wa)
-	if err != nil {
-		return err
-	}
-	wa.Curve = elliptic.P256()
-	*w = Wallet{PublicKey: ecdsa.PublicKey{
-		Curve: wa.Curve, X: wa.X, Y: wa.Y,
-	}, D: wa.D}
-	return nil
-}
-
 type Wallets map[string]*Wallet
 
 func (ws *Wallets) NewWallet() *Wallet {
@@ -152,52 +133,4 @@ func WalletsDeserialize(data []byte) *Wallets {
 		(*ws)[k] = WalletDeserialize(v)
 	}
 	return ws
-}
-
-func GetWallets() (*Wallets, error) {
-	_, err := os.Stat("data")
-	if errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir("data", 0750)
-		if err != nil {
-			return nil, err
-		}
-	}
-	_, err = os.Stat("data/wallets.json")
-	if errors.Is(err, os.ErrNotExist) {
-		ws := &Wallets{}
-		data, err := json.Marshal(ws)
-		if err != nil {
-			return nil, err
-		}
-		err = os.WriteFile("data/wallets.json", data, 0666)
-		if err != nil {
-			return nil, err
-		}
-		return ws, nil
-	}
-	data, err := os.ReadFile("data/wallets.json")
-	if err != nil {
-		return nil, err
-	}
-	ws := &Wallets{}
-	err = json.Unmarshal(data, ws)
-	if err != nil {
-		return nil, err
-	}
-	for _, wallet := range *ws {
-		wallet.Curve = elliptic.P256()
-	}
-	return ws, nil
-}
-
-func (ws *Wallets) Write() error {
-	data, err := json.Marshal(ws)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile("data/wallets.json", data, 0666)
-	if err != nil {
-		return err
-	}
-	return nil
 }

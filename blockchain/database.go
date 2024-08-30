@@ -12,12 +12,14 @@ type Database struct {
 	Key []byte
 }
 
-const bcbucket = "blockchain"
-const poolkey = "pool"
-const tipkey = "tip"
-const utxokey = "utxo"
-const wskey = "wallets"
-const dbpath = "data/blockchain.db"
+const (
+	bcbucket = "blockchain"
+	poolkey  = "pool"
+	tipkey   = "tip"
+	utxokey  = "utxo"
+	wskey    = "wallets"
+	dbpath   = "data/blockchain.db"
+)
 
 func GetDatabase() *Database {
 	_, err := os.Stat("data")

@@ -4,42 +4,10 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 )
 
 type UTXOSet map[string][]*TxOut
-
-func (u *UTXOSet) UnspentTxOuts(w *Wallet) []*TxOut {
-	unspent := make([]*TxOut, 0)
-	for _, outs := range *u {
-		for _, out := range outs {
-			if out.LockedWith(w) {
-				unspent = append(unspent, out)
-			}
-		}
-	}
-	return unspent
-}
-
-func (u *UTXOSet) SpendableTxOuts(w *Wallet, amount int) (map[string][]int, int) {
-	unspent := make(map[string][]int)
-	total := 0
-	for txHashStr, outs := range *u {
-		for idx, out := range outs {
-			if out.LockedWith(w) {
-				unspent[txHashStr] = append(unspent[txHashStr], idx)
-				total += out.Value
-			}
-			if total >= amount {
-				return unspent, total
-			}
-		}
-	}
-	return nil, 0
-}
 
 func (u *UTXOSet) Index(bc *Blockchain) {
 	*u = make(map[string][]*TxOut)
@@ -72,6 +40,35 @@ func (u *UTXOSet) Update(tx *Tx) {
 		newOuts = append(newOuts, out)
 	}
 	(*u)[txHashStr] = newOuts
+}
+
+func (u *UTXOSet) UnspentTxOuts(w *Wallet) []*TxOut {
+	unspent := make([]*TxOut, 0)
+	for _, outs := range *u {
+		for _, out := range outs {
+			if out.LockedWith(w) {
+				unspent = append(unspent, out)
+			}
+		}
+	}
+	return unspent
+}
+
+func (u *UTXOSet) SpendableTxOuts(w *Wallet, amount int) (map[string][]int, int) {
+	unspent := make(map[string][]int)
+	total := 0
+	for txHashStr, outs := range *u {
+		for idx, out := range outs {
+			if out.LockedWith(w) {
+				unspent[txHashStr] = append(unspent[txHashStr], idx)
+				total += out.Value
+			}
+			if total >= amount {
+				return unspent, total
+			}
+		}
+	}
+	return nil, 0
 }
 
 func (u *UTXOSet) TransferTxIn(from *Wallet, amount int) ([]*TxIn, int) {
@@ -111,51 +108,4 @@ func UTXOSetDeserialize(data []byte) *UTXOSet {
 		panic(err)
 	}
 	return u
-}
-
-func GetUTXOSet() (*UTXOSet, error) {
-	_, err := os.Stat("data")
-	if errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir("data", 0750)
-		if err != nil {
-			return nil, err
-		}
-	}
-	_, err = os.Stat("data/utxoset.json")
-	if errors.Is(err, os.ErrNotExist) {
-		u := new(UTXOSet)
-		*u = make(UTXOSet)
-		data, err := json.Marshal(u)
-		if err != nil {
-			return nil, err
-		}
-		err = os.WriteFile("data/utxoset.json", data, 0666)
-		if err != nil {
-			return nil, err
-		}
-		return u, nil
-	}
-	data, err := os.ReadFile("data/utxoset.json")
-	if err != nil {
-		return nil, err
-	}
-	u := new(UTXOSet)
-	*u = make(UTXOSet)
-	err = json.Unmarshal(data, &u)
-	if err != nil {
-		return nil, err
-	}
-	return u, nil
-}
-
-func (u *UTXOSet) Write() error {
-	data, err := json.Marshal(u)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile("data/utxoset.json", data, 0666)
-	if err != nil {
-		return err
-	}
-	return nil
 }
