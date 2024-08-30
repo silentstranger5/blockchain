@@ -14,17 +14,15 @@ const difficulty = 16
 const reward = 10
 
 type Blockchain struct {
-	Block      *Block `json:"-"`
+	DB         *Database `json:"-"`
 	Pool       Txs
 	Difficulty int
 	Valid      bool
-	DB         *Database `json:"-"`
 }
 
 func GetBlockchain(db *Database) *Blockchain {
 	bc := &Blockchain{}
 	db.Blockchain()
-	bc.Block = db.NextBlock()
 	pool := db.Pool()
 	if pool != nil {
 		bc.Pool = *pool
@@ -46,8 +44,8 @@ func (bc *Blockchain) Mine(miner *Wallet, u *UTXOSet) {
 	tx := CoinBaseTx(miner)
 	bc.Pool = append(Txs{tx}, bc.Pool...)
 	u.Update(tx)
-	prevHash := bc.LastHash()
-	header := NewBlockHeader(prevHash)
+	lastHash := bc.LastHash()
+	header := NewBlockHeader(lastHash)
 	txs := bc.Pool
 	bc.Pool = nil
 	block := &Block{header, txs}

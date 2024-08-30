@@ -13,10 +13,10 @@ type Database struct {
 }
 
 const bcbucket = "blockchain"
-const wsbucket = "wallets"
-const utxokey = "utxo"
 const poolkey = "pool"
 const tipkey = "tip"
+const utxokey = "utxo"
+const wskey = "wallets"
 const dbpath = "data/blockchain.db"
 
 func GetDatabase() *Database {
@@ -117,8 +117,12 @@ func (d *Database) Pool() *Txs {
 	var data []byte
 	err := d.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bcbucket))
+		var err error
 		if b == nil {
-			return errors.New("bucket does not exist")
+			b, err = tx.CreateBucket([]byte(bcbucket))
+			if err != nil {
+				return err
+			}
 		}
 		data = b.Get([]byte(poolkey))
 		return nil
@@ -163,33 +167,33 @@ func (d *Database) CleanPool() {
 func (d *Database) Wallets() *Wallets {
 	var data []byte
 	err := d.DB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(wsbucket))
+		b := tx.Bucket([]byte(bcbucket))
 		var err error
 		if b == nil {
-			b, err = tx.CreateBucket([]byte(wsbucket))
+			b, err = tx.CreateBucket([]byte(bcbucket))
 			if err != nil {
 				return err
 			}
 		}
-		data = b.Get([]byte(wsbucket))
+		data = b.Get([]byte(wskey))
 		return nil
 	})
 	if err != nil {
 		panic(err)
 	}
 	if data == nil {
-		return &Wallets{}
+		return nil
 	}
 	return WalletsDeserialize(data)
 }
 
 func (d *Database) SetWallets(ws *Wallets) {
 	err := d.DB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(wsbucket))
+		b := tx.Bucket([]byte(bcbucket))
 		if b == nil {
 			return errors.New("bucket does not exist")
 		}
-		b.Put([]byte(wsbucket), ws.Serialize())
+		b.Put([]byte(wskey), ws.Serialize())
 		return nil
 	})
 	if err != nil {
@@ -201,8 +205,12 @@ func (d *Database) UTXOSet() *UTXOSet {
 	var data []byte
 	err := d.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bcbucket))
+		var err error
 		if b == nil {
-			return errors.New("bucket does not exist")
+			b, err = tx.CreateBucket([]byte(bcbucket))
+			if err != nil {
+				return err
+			}
 		}
 		data = b.Get([]byte(utxokey))
 		return nil
@@ -211,7 +219,7 @@ func (d *Database) UTXOSet() *UTXOSet {
 		panic(err)
 	}
 	if data == nil {
-		return &UTXOSet{}
+		return nil
 	}
 	return UTXOSetDeserialize(data)
 }

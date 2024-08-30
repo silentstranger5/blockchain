@@ -20,6 +20,10 @@ func Wallet_(args []string) {
 	db := GetDatabase()
 	defer db.Close()
 	ws := db.Wallets()
+	if ws == nil {
+		ws = new(Wallets)
+		*ws = make(Wallets)
+	}
 	switch method {
 	case "balance":
 		holder := args[1]
@@ -45,7 +49,7 @@ func Wallet_(args []string) {
 		db.SetWallets(ws)
 		fmt.Println(wallet.Address())
 	case "list":
-		wallets := make([]string, 0)
+		var wallets []string
 		for wallet := range *ws {
 			wallets = append(wallets, wallet)
 		}
