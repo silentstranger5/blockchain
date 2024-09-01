@@ -27,7 +27,7 @@ func Wallet_(args []string) {
 	switch method {
 	case "balance":
 		holder := args[1]
-		bc := GetBlockchain(db)
+		bc := db.Blockchain()
 		wallet := ws.Wallet(holder)
 		if wallet == nil {
 			fmt.Println("Cli.Wallet: Failed to Get Wallet: Wallet does not exist")
@@ -94,7 +94,7 @@ func Send(args []string) {
 		fmt.Printf("Cli.Send: Failed to Record TransferTx: Invalid Amount Value\n")
 		return
 	}
-	bc := GetBlockchain(db)
+	bc := db.Blockchain()
 	u := db.UTXOSet()
 	if u == nil {
 		u = new(UTXOSet)
@@ -118,7 +118,7 @@ func Mine(args []string) {
 		ws = new(Wallets)
 		*ws = make(Wallets)
 	}
-	bc := GetBlockchain(db)
+	bc := db.Blockchain()
 	wallet := ws.Wallet(miner)
 	if wallet == nil {
 		fmt.Println("Cli.Mine: Failed to Get Wallet: Wallet does not exist")
@@ -137,13 +137,13 @@ func Mine(args []string) {
 func Verify() {
 	db := GetDatabase()
 	defer db.Close()
-	bc := GetBlockchain(db)
+	bc := db.Blockchain()
 	fmt.Printf("Valid: %v\n", bc.Verify())
 }
 
 func Print() {
 	db := GetDatabase()
 	defer db.Close()
-	bc := GetBlockchain(db)
+	bc := db.Blockchain()
 	bc.Print()
 }

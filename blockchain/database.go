@@ -29,25 +29,13 @@ func GetDatabase() *Database {
 			panic(err)
 		}
 	}
-	db := &Database{}
-	db.Open(dbpath)
-	return db
-}
-
-func (d *Database) Open(path string) {
-	db, err := bolt.Open(path, 0600, nil)
+	d := &Database{}
+	db, err := bolt.Open(dbpath, 0600, nil)
 	if err != nil {
 		panic(err)
 	}
 	d.DB = db
-}
-
-func (d *Database) Close() {
-	d.DB.Close()
-}
-
-func (d *Database) Blockchain() {
-	err := d.DB.Update(func(tx *bolt.Tx) error {
+	err = d.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bcbucket))
 		var err error
 		if b == nil {
@@ -55,6 +43,32 @@ func (d *Database) Blockchain() {
 			if err != nil {
 				return err
 			}
+		}
+		return nil
+	})
+	return d
+}
+
+func (d *Database) Close() {
+	d.DB.Close()
+}
+
+func (d *Database) Blockchain() *Blockchain {
+	bc := &Blockchain{}
+	pool := d.Pool()
+	if pool != nil {
+		bc.Pool = *pool
+	}
+	bc.Difficulty = difficulty
+	bc.DB = d
+	return bc
+}
+
+func (d *Database) BlockchainTip() {
+	err := d.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bcbucket))
+		if b == nil {
+			return errors.New("bucket does not exist")
 		}
 		lastHash := b.Get([]byte(tipkey))
 		d.Key = lastHash
@@ -119,12 +133,8 @@ func (d *Database) Pool() *Txs {
 	var data []byte
 	err := d.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bcbucket))
-		var err error
 		if b == nil {
-			b, err = tx.CreateBucket([]byte(bcbucket))
-			if err != nil {
-				return err
-			}
+			return errors.New("bucket does not exist")
 		}
 		data = b.Get([]byte(poolkey))
 		return nil
@@ -170,12 +180,8 @@ func (d *Database) Wallets() *Wallets {
 	var data []byte
 	err := d.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bcbucket))
-		var err error
 		if b == nil {
-			b, err = tx.CreateBucket([]byte(bcbucket))
-			if err != nil {
-				return err
-			}
+			return errors.New("bucket does not exist")
 		}
 		data = b.Get([]byte(wskey))
 		return nil
@@ -207,12 +213,8 @@ func (d *Database) UTXOSet() *UTXOSet {
 	var data []byte
 	err := d.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bcbucket))
-		var err error
 		if b == nil {
-			b, err = tx.CreateBucket([]byte(bcbucket))
-			if err != nil {
-				return err
-			}
+			return errors.New("bucket does not exist")
 		}
 		data = b.Get([]byte(utxokey))
 		return nil

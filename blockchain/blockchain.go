@@ -20,18 +20,6 @@ type Blockchain struct {
 	Valid      bool
 }
 
-func GetBlockchain(db *Database) *Blockchain {
-	bc := &Blockchain{}
-	db.Blockchain()
-	pool := db.Pool()
-	if pool != nil {
-		bc.Pool = *pool
-	}
-	bc.Difficulty = difficulty
-	bc.DB = db
-	return bc
-}
-
 func (bc Blockchain) Send(from, to *Wallet, amount int, u *UTXOSet) {
 	tx := TransferTx(from, to, amount, u)
 	bc.Pool = append(Txs{tx}, bc.Pool...)
@@ -56,7 +44,7 @@ func (bc *Blockchain) Mine(miner *Wallet, u *UTXOSet) {
 }
 
 func (bc *Blockchain) TxByHash(txHash []byte) *Tx {
-	bc.DB.Blockchain()
+	bc.DB.BlockchainTip()
 	block := bc.DB.NextBlock()
 	for block != nil {
 		for _, tx := range block.Txs {
@@ -71,7 +59,7 @@ func (bc *Blockchain) TxByHash(txHash []byte) *Tx {
 
 func (bc *Blockchain) Verify() bool {
 	result := true
-	bc.DB.Blockchain()
+	bc.DB.BlockchainTip()
 	block := bc.DB.NextBlock()
 	for block != nil {
 		result = result && block.Verify()
@@ -93,7 +81,7 @@ func (bc *Blockchain) Verify() bool {
 
 func (bc *Blockchain) LastHash() []byte {
 	var lastHash []byte
-	bc.DB.Blockchain()
+	bc.DB.BlockchainTip()
 	block := bc.DB.NextBlock()
 	if block != nil {
 		lastHash = block.Header.Hash
@@ -104,7 +92,7 @@ func (bc *Blockchain) LastHash() []byte {
 func (bc *Blockchain) UnspentTxOuts() map[string][]*TxOut {
 	spent := make(map[string][]int)
 	unspent := bc.Pool.UnspentTxOuts(spent)
-	bc.DB.Blockchain()
+	bc.DB.BlockchainTip()
 	block := bc.DB.NextBlock()
 	for block != nil {
 		unspentBlock := block.Txs.UnspentTxOuts(spent)
@@ -117,7 +105,7 @@ func (bc *Blockchain) UnspentTxOuts() map[string][]*TxOut {
 }
 
 func (bc *Blockchain) Print() {
-	bc.DB.Blockchain()
+	bc.DB.BlockchainTip()
 	block := bc.DB.NextBlock()
 	for block != nil {
 		data, err := json.MarshalIndent(block, "", "  ")
